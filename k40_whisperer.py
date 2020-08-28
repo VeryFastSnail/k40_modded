@@ -87,6 +87,7 @@ import webbrowser
 from PIL import Image
 from PIL import ImageOps
 from PIL import ImageFilter
+import json
 
 try:
     Image.warnings.simplefilter('ignore', Image.DecompressionBombWarning)
@@ -115,6 +116,8 @@ QUIET = False
 
 ################################################################################
 class Application(Frame):
+    presetsData = {}
+
     def __init__(self, master):
         self.trace_window = toplevel_dummy()
         Frame.__init__(self, master)
@@ -124,6 +127,7 @@ class Application(Frame):
         self.master = master
         self.x = -1
         self.y = -1
+        presetsData = self.loadPresets()
         self.createWidgets()
         self.micro = False
 
@@ -778,7 +782,12 @@ class Application(Frame):
 
     ##########################################################################
 
-    ################################################################################
+    def loadPresets(self):
+        presetsFile = open('database/presets.json')
+        self.presetsData = json.load(presetsFile)
+        presetsFile.close()
+        ################################################################################
+
     def entry_set(self, val2, calc_flag=0, new=0):
         if calc_flag == 0 and new == 0:
             try:
@@ -5110,7 +5119,7 @@ class Application(Frame):
         ################################################################################
 
     def Prst_show(self):
-        preset_window = Toplevel(width=550, height=300)
+        preset_window = Toplevel(width=650, height=300)
         preset_window.grab_set()  # Use grab_set to prevent user input in the main window
         preset_window.focus_set()
         preset_window.resizable(0, 0)
@@ -5134,29 +5143,23 @@ class Application(Frame):
 
         self.style = ttk.Style()
         self.style.configure("mystyle.Treeview", highlightthickness=0, bd=0,
-                        font=('Calibri', 11))  # Modify the font of the body
+                             font=('Calibri', 11))  # Modify the font of the body
 
-        self.tree = ttk.Treeview(preset_window,style="mystyle.Treeview")
-        self.tree["columns"] = ("1", "2", "3")
-        self.tree['show'] = 'headings'
+        self.tree = ttk.Treeview(preset_window, columns=("#0", "#1", "#2"))
+        self.tree.heading('#0', text='Name')
+        self.tree.column('#0', minwidth=0, width=150, stretch=NO)
+        self.tree.heading('#1', text='Power')
+        self.tree.column('#1', width=100)
+        self.tree.heading('#2', text='Speed')
+        self.tree.column('#2', width=100)
 
-        self.tree.place(x=250, y=150, width=450, height=200, anchor="center")
+        for parent, children in self.presetsData.items():
+            parent = self.tree.insert('', 'end', text=parent)
+            self.tree.bind("<Double-1>", self.setPreset)
+            for child in children.items():
+                self.tree.insert(parent, 'end', text=child[0], values=(child[1]['power'], child[1]['speed']))
 
-        self.tree.column("1", width=90, anchor='c')
-        self.tree.column("2", width=90, anchor='se')
-        self.tree.column("3", width=90, anchor='se')
-
-        self.tree.heading("1", text="Material")
-        self.tree.heading("2", text="Power")
-        self.tree.heading("3", text="Speed")
-
-        self.tree.tag_configure('odd', background='#E8E8E8')
-        self.tree.tag_configure('even', background='#DFDFDF')
-
-        tst = self.tree.insert("", 'end', text="Acrylic", values=("Acrylic", "", ""))
-        self.tree.insert(tst, 'end', text="", values=("Raster", "8", "100"))
-        self.tree.insert(tst, 'end', text="", values=("Engrave", "5", "20"))
-        self.tree.insert(tst, 'end', text="", values=("Cut", "25", "11"),)
+        self.tree.place(x=250, y=150, width=500, height=250, anchor="center")
 
         ## Buttons ##
         preset_window.update_idletasks()
@@ -5166,6 +5169,16 @@ class Application(Frame):
         self.GEN_Close = Button(preset_window, text="Close")
         self.GEN_Close.place(x=Xbut, y=Ybut, width=130, height=30, anchor="center")
         self.GEN_Close.bind("<ButtonRelease-1>", self.Close_Current_Window_Click)
+
+    def setPreset(self, event):
+        item_id = event.widget.focus()
+        item = event.widget.item(item_id)
+        if item['text'] in self.presetsData.keys():
+            itm = self.presetsData[item['text']]
+            self.Reng_feed.set(itm['Raster']['speed'])
+            self.Veng_feed.set(itm['Engrave']['speed'])
+            self.Vcut_feed.set(itm['Cut']['speed'])
+
 
     ################################################################################
     #                         Rotary Settings Window                               #

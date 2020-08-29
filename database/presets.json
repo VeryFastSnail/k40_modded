@@ -1,8 +1,16 @@
 {
-  "Akrilas 3mm" : {
-      "Raster": {
-        "speed" : 20,
-        "power" : 20
-      }
+  "Akrilas 3mm": {
+    "Raster": {
+      "speed": 20,
+      "power": 20
+    },
+    "Engrave": {
+      "speed": 20,
+      "power": 20
+    },
+    "Cut": {
+      "speed": 20,
+      "power": 20
+    }
   }
 }

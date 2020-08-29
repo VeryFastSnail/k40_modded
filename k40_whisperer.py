@@ -485,12 +485,16 @@ class Application(Frame):
         self.NormalColor = self.Entry_Vcut_feed.cget('bg')
 
         # Buttons
-        self.Prst_Button = Button(self.master, text="Presets", command=self.Prst_show)
+
+        self.Label_Power = Label(self.master, text="Power %", anchor=CENTER)
+        self.Entry_Power = Entry(self.master, width="15", justify='center')
 
         self.Reng_Button = Button(self.master, text="Raster Engrave", command=self.Raster_Eng)
         self.Veng_Button = Button(self.master, text="Vector Engrave", command=self.Vector_Eng)
         self.Vcut_Button = Button(self.master, text="Vector Cut", command=self.Vector_Cut)
         self.Grun_Button = Button(self.master, text="Run G-Code", command=self.Gcode_Cut)
+
+        self.Prst_Button = Button(self.master, text="Presets", command=self.Prst_show)
 
         self.Reng_Veng_Button = Button(self.master, text="Raster and\nVector Engrave", command=self.Raster_Vector_Eng)
         self.Veng_Vcut_Button = Button(self.master, text="Vector Engrave\nand Cut", command=self.Vector_Eng_Cut)
@@ -551,6 +555,7 @@ class Application(Frame):
 
         ###########################################################################
         self.GoTo_Button = Button(self.master, text="Move To", command=self.GoTo)
+
 
         self.Entry_GoToX = Entry(self.master, width="15", justify='center')
         self.Entry_GoToX.configure(textvariable=self.gotoX)
@@ -1237,8 +1242,17 @@ class Application(Frame):
         self.refreshTime()
         return 0  # Value is a valid number
 
+    def Entry_Power_Check(self):
+        try:
+           float(self.Entry_Power.get())
+        except:
+            return 3  # Value not a number
+        self.refreshTime()
+        return 0  # Value is a valid number
+
     def Entry_Reng_feed_Callback(self, varName, index, mode):
         self.entry_set(self.Entry_Reng_feed, self.Entry_Reng_feed_Check(), new=1)
+
         #############################
 
     def Entry_Veng_feed_Check(self):
@@ -4038,6 +4052,10 @@ class Application(Frame):
                     self.Label_Reng_feed_u.place(x=x_units_L, y=Yloc, width=w_units, height=23)
                     Y_Reng = Yloc
 
+                    Yloc = Yloc - 30
+                    self.Label_Power.place(x=15, y=Yloc, width=60, height=23)
+                    self.Entry_Power.place(x=115, y=Yloc, width=95, height=23)
+
                     if self.comb_vector.get() or self.comb_engrave.get():
                         if self.comb_engrave.get():
                             self.Veng_Button.place_forget()
@@ -5119,7 +5137,7 @@ class Application(Frame):
         ################################################################################
 
     def Prst_show(self):
-        preset_window = Toplevel(width=650, height=300)
+        preset_window = Toplevel(width=520, height=300)
         preset_window.grab_set()  # Use grab_set to prevent user input in the main window
         preset_window.focus_set()
         preset_window.resizable(0, 0)
@@ -5135,8 +5153,6 @@ class Application(Frame):
         xd_label_L = 12
 
         w_label = 180
-        w_entry = 40
-        xd_entry_L = xd_label_L + w_label + 10
 
         self.Add_new_prst = Button(preset_window, text="Add new")
         self.Add_new_prst.place(x=80, y=20, width=130, height=30, anchor="center")
@@ -5159,16 +5175,7 @@ class Application(Frame):
             for child in children.items():
                 self.tree.insert(parent, 'end', text=child[0], values=(child[1]['power'], child[1]['speed']))
 
-        self.tree.place(x=250, y=150, width=500, height=250, anchor="center")
-
-        ## Buttons ##
-        preset_window.update_idletasks()
-        Ybut = int(preset_window.winfo_height()) - 30
-        Xbut = int(preset_window.winfo_width() / 2)
-
-        self.GEN_Close = Button(preset_window, text="Close")
-        self.GEN_Close.place(x=Xbut, y=Ybut, width=130, height=30, anchor="center")
-        self.GEN_Close.bind("<ButtonRelease-1>", self.Close_Current_Window_Click)
+        self.tree.place(x=260, y=170, width=500, height=250, anchor="center")
 
     def setPreset(self, event):
         item_id = event.widget.focus()

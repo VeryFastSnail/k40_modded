@@ -1,29 +1,16 @@
 {
-  "Acrilas": {
+  "Akrilas 3mm": {
     "Raster": {
-      "power": 8,
-      "speed": 111
+      "speed": 20,
+      "power": 20
     },
     "Engrave": {
-      "power": 10,
-      "speed": 222
+      "speed": 20,
+      "power": 20
     },
     "Cut": {
-      "power": 25,
-      "speed": 333
-    }
-  }, "Fanera 3mm": {
-    "Raster": {
-      "power": 8,
-      "speed": 100
-    },
-    "Engrave": {
-      "power": 10,
-      "speed": 8
-    },
-    "Cut": {
-      "power": 25,
-      "speed": 8
+      "speed": 20,
+      "power": 20
     }
   }
 }

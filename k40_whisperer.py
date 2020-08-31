@@ -237,6 +237,10 @@ class Application(Frame):
         self.Veng_feed = StringVar()
         self.Vcut_feed = StringVar()
 
+        self.Reng_pow = StringVar()
+        self.Veng_pow = StringVar()
+        self.Vcut_pow = StringVar()
+
         self.Reng_passes = StringVar()
         self.Veng_passes = StringVar()
         self.Vcut_passes = StringVar()
@@ -329,6 +333,11 @@ class Application(Frame):
         self.Reng_feed.set("100")
         self.Veng_feed.set("20")
         self.Vcut_feed.set("10")
+
+        self.Reng_pow.set("0")
+        self.Veng_pow.set("0")
+        self.Vcut_pow.set("0")
+
         self.Reng_passes.set("1")
         self.Veng_passes.set("1")
         self.Vcut_passes.set("1")
@@ -465,6 +474,7 @@ class Application(Frame):
         self.separator2 = Frame(self.master, height=2, bd=1, relief=SUNKEN)
         self.separator3 = Frame(self.master, height=2, bd=1, relief=SUNKEN)
         self.separator4 = Frame(self.master, height=2, bd=1, relief=SUNKEN)
+        self.separator5 = Frame(self.master, height=2, bd=1, relief=SUNKEN)
 
         self.Label_Reng_feed_u = Label(self.master, textvariable=self.funits, anchor=W)
         self.Entry_Reng_feed = Entry(self.master, width="15")
@@ -486,8 +496,19 @@ class Application(Frame):
 
         # Buttons
 
-        self.Label_Power = Label(self.master, text="Power %", anchor=CENTER)
-        self.Entry_Power = Entry(self.master, width="15", justify='center')
+        self.Label_Powrs = Label(self.master, text="Power Settings", anchor=CENTER)
+
+        self.Label_PowReng = Label(self.master, text="Raster", anchor=CENTER)
+        self.Entry_PowReng = Entry(self.master, width="15", justify='center')
+        self.Entry_PowReng.configure(textvariable=self.Reng_pow, justify='center', fg="black")
+
+        self.Label_PowVeng = Label(self.master, text="Vector", anchor=CENTER)
+        self.Entry_PowVeng = Entry(self.master, width="15", justify='center')
+        self.Entry_PowVeng.configure(textvariable=self.Veng_pow, justify='center', fg="black")
+
+        self.Label_PowCut = Label(self.master, text="Cut", anchor=CENTER)
+        self.Entry_PowCut = Entry(self.master, width="15", justify='center')
+        self.Entry_PowCut.configure(textvariable=self.Vcut_pow, justify='center', fg="black")
 
         self.Reng_Button = Button(self.master, text="Raster Engrave", command=self.Raster_Eng)
         self.Veng_Button = Button(self.master, text="Vector Engrave", command=self.Vector_Eng)
@@ -4052,9 +4073,22 @@ class Application(Frame):
                     self.Label_Reng_feed_u.place(x=x_units_L, y=Yloc, width=w_units, height=23)
                     Y_Reng = Yloc
 
+                    Yloc = Yloc-15
+                    self.separator5.place(x=x_label_L, y=Yloc, width=w_label + 75 + 40, height=2)
+
+                    Yloc = Yloc - 40
+                    self.Entry_PowReng.place(x=15, y=Yloc, width=55, height=23)
+                    self.Entry_PowVeng.place(x=80, y=Yloc, width=55, height=23)
+                    self.Entry_PowCut.place(x=145, y=Yloc, width=55, height=23)
+
                     Yloc = Yloc - 30
-                    self.Label_Power.place(x=15, y=Yloc, width=60, height=23)
-                    self.Entry_Power.place(x=115, y=Yloc, width=95, height=23)
+                    self.Label_PowReng.place(x=15, y=Yloc, width=55, height=23)
+                    self.Label_PowVeng.place(x=80, y=Yloc, width=55, height=23)
+                    self.Label_PowCut.place(x=145, y=Yloc, width=55, height=23)
+
+                    Yloc = Yloc - 30
+                    self.Label_Powrs.place(x=40, y=Yloc, width=150, height=23)
+
 
                     if self.comb_vector.get() or self.comb_engrave.get():
                         if self.comb_engrave.get():
@@ -4094,7 +4128,7 @@ class Application(Frame):
                     self.Grun_Button.place(x=12, y=Yloc, width=100 * 2, height=23)
 
                 if h >= 560:
-                    Yloc = Yloc - 15
+                    Yloc = Yloc - 10
                     self.separator2.place(x=x_label_L, y=Yloc, width=w_label + 75 + 40, height=2)
                 else:
                     self.separator2.place_forget()
@@ -5154,8 +5188,8 @@ class Application(Frame):
 
         w_label = 180
 
-        self.Add_new_prst = Button(preset_window, text="Add new")
-        self.Add_new_prst.place(x=80, y=20, width=130, height=30, anchor="center")
+        self.Add_new_prst = Button(preset_window, text="Add new from current settings")
+        self.Add_new_prst.place(x=140, y=20, width=250, height=30, anchor="center")
 
         self.style = ttk.Style()
         self.style.configure("mystyle.Treeview", highlightthickness=0, bd=0,
@@ -5185,6 +5219,10 @@ class Application(Frame):
             self.Reng_feed.set(itm['Raster']['speed'])
             self.Veng_feed.set(itm['Engrave']['speed'])
             self.Vcut_feed.set(itm['Cut']['speed'])
+
+            self.Reng_pow.set(itm['Raster']['power'])
+            self.Veng_pow.set(itm['Engrave']['power'])
+            self.Vcut_pow.set(itm['Cut']['power'])
 
 
     ################################################################################

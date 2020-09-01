@@ -5171,15 +5171,15 @@ class Application(Frame):
         ################################################################################
 
     def Prst_show(self):
-        preset_window = Toplevel(width=520, height=300)
-        preset_window.grab_set()  # Use grab_set to prevent user input in the main window
-        preset_window.focus_set()
-        preset_window.resizable(0, 0)
-        preset_window.title('Preset Menu')
-        preset_window.iconname("Preset Menu")
+        self.preset_window = Toplevel(width=520, height=300)
+        self.preset_window.grab_set()  # Use grab_set to prevent user input in the main window
+        self.preset_window.focus_set()
+        self.preset_window.resizable(0, 0)
+        self.preset_window.title('Preset Menu')
+        self.preset_window.iconname("Preset Menu")
 
         try:
-            preset_window.iconbitmap(bitmap="@emblem64")
+            self.preset_window.iconbitmap(bitmap="@emblem64")
         except:
             debug_message(traceback.format_exc())
             pass
@@ -5188,14 +5188,14 @@ class Application(Frame):
 
         w_label = 180
 
-        self.Add_new_prst = Button(preset_window, text="Add new from current settings")
+        self.Add_new_prst = Button(self.preset_window, text="Add new from current settings")
         self.Add_new_prst.place(x=140, y=20, width=250, height=30, anchor="center")
 
         self.style = ttk.Style()
         self.style.configure("mystyle.Treeview", highlightthickness=0, bd=0,
                              font=('Calibri', 11))  # Modify the font of the body
 
-        self.tree = ttk.Treeview(preset_window, columns=("#0", "#1", "#2"))
+        self.tree = ttk.Treeview(self.preset_window, columns=("#0", "#1", "#2"))
         self.tree.heading('#0', text='Name')
         self.tree.column('#0', minwidth=0, width=150, stretch=NO)
         self.tree.heading('#1', text='Power')
@@ -5223,6 +5223,9 @@ class Application(Frame):
             self.Reng_pow.set(itm['Raster']['power'])
             self.Veng_pow.set(itm['Engrave']['power'])
             self.Vcut_pow.set(itm['Cut']['power'])
+            self.preset_window.destroy()
+
+
 
 
     ################################################################################

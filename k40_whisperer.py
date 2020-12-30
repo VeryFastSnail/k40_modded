@@ -20,7 +20,10 @@
 version = '0.52'
 title_text = "K40 Whisperer V" + version
 
+import gpiozero
+
 import sys
+import serial
 from math import *
 from egv import egv
 from nano_library import K40_CLASS
@@ -57,6 +60,7 @@ if VERSION == 3:
     MAXINT = sys.maxsize
 
 else:
+    import ttk
     from Tkinter import *
     from tkFileDialog import *
     import tkMessageBox
@@ -66,7 +70,7 @@ else:
 if VERSION < 3 and sys.version_info[1] < 6:
     def next(item):
         # return item.next()
-        return item.__next__()
+        return item.__next__() 
 
 try:
     import psyco
@@ -117,8 +121,24 @@ QUIET = False
 ################################################################################
 class Application(Frame):
     presetsData = {}
+    filename    = "database/presets.json"
+
+    controller = serial.Serial()
+    controller.baudrate = 9600
+    controller.port = '/dev/ttyUSB0'
+    
+    rasterBtn = gpiozero.Button(5)
+    unlockBtn = gpiozero.Button(6)
+    cutBtn = gpiozero.Button(13)
+    engraveBtn = gpiozero.Button(19)
 
     def __init__(self, master):
+
+        self.unlockBtn.when_pressed = self.Unlock
+        self.rasterBtn.when_pressed = self.Raster_Eng
+        self.engraveBtn.when_pressed = self.Vector_Eng
+        self.cutBtn.when_pressed = self.Vector_Cut
+
         self.trace_window = toplevel_dummy()
         Frame.__init__(self, master)
         self.w = 780
@@ -475,7 +495,8 @@ class Application(Frame):
         self.separator3 = Frame(self.master, height=2, bd=1, relief=SUNKEN)
         self.separator4 = Frame(self.master, height=2, bd=1, relief=SUNKEN)
         self.separator5 = Frame(self.master, height=2, bd=1, relief=SUNKEN)
-
+        self.separator6 = Frame(self.master, height=2, bd=1, relief=SUNKEN)
+        
         self.Label_Reng_feed_u = Label(self.master, textvariable=self.funits, anchor=W)
         self.Entry_Reng_feed = Entry(self.master, width="15")
         self.Entry_Reng_feed.configure(textvariable=self.Reng_feed, justify='center', fg="black")
@@ -496,6 +517,12 @@ class Application(Frame):
 
         # Buttons
 
+        self.Button_EngraveAndCut = Button(self.master, text="Vector engrave & Cut", command=self.VectorCutAndEngrave)
+
+        self.Label_SetPower = Label(self.master, text="Set Power to:", anchor=CENTER)
+        self.Entry_SetPower = Entry(self.master, justify='center')
+        self.Button_SetPower = Button(self.master, text=">", command=self.manualPowerSet)
+
         self.Label_Powrs = Label(self.master, text="Power Settings", anchor=CENTER)
 
         self.Label_PowReng = Label(self.master, text="Raster", anchor=CENTER)
@@ -504,15 +531,15 @@ class Application(Frame):
 
         self.Label_PowVeng = Label(self.master, text="Vector", anchor=CENTER)
         self.Entry_PowVeng = Entry(self.master, width="15", justify='center')
-        self.Entry_PowVeng.configure(textvariable=self.Veng_pow, justify='center', fg="black")
+        self.Entry_PowVeng.configure(textvariable=self.Veng_pow, justify='center', fg="blue")
 
         self.Label_PowCut = Label(self.master, text="Cut", anchor=CENTER)
         self.Entry_PowCut = Entry(self.master, width="15", justify='center')
-        self.Entry_PowCut.configure(textvariable=self.Vcut_pow, justify='center', fg="black")
+        self.Entry_PowCut.configure(textvariable=self.Vcut_pow, justify='center', fg="red")
 
         self.Reng_Button = Button(self.master, text="Raster Engrave", command=self.Raster_Eng)
         self.Veng_Button = Button(self.master, text="Vector Engrave", command=self.Vector_Eng)
-        self.Vcut_Button = Button(self.master, text="Vector Cut", command=self.Vector_Cut)
+        self.Vcut_Button = Button(self.master, text="Vector Cut!", command=self.Vector_Cut)
         self.Grun_Button = Button(self.master, text="Run G-Code", command=self.Gcode_Cut)
 
         self.Prst_Button = Button(self.master, text="Presets", command=self.Prst_show)
@@ -576,7 +603,6 @@ class Application(Frame):
 
         ###########################################################################
         self.GoTo_Button = Button(self.master, text="Move To", command=self.GoTo)
-
 
         self.Entry_GoToX = Entry(self.master, width="15", justify='center')
         self.Entry_GoToX.configure(textvariable=self.gotoX)
@@ -809,10 +835,12 @@ class Application(Frame):
     ##########################################################################
 
     def loadPresets(self):
-        presetsFile = open('database/presets.json')
+        presetsFile = open(self.filename)
         self.presetsData = json.load(presetsFile)
         presetsFile.close()
-        ################################################################################
+    ################################################################################
+
+    
 
     def entry_set(self, val2, calc_flag=0, new=0):
         if calc_flag == 0 and new == 0:
@@ -986,6 +1014,10 @@ class Application(Frame):
 
         return header
         ######################################################
+
+    def manualPowerSet(self):
+        power = self.Entry_SetPower.get()
+        self.SendPowerSettingsToController(power)
 
     def Quit_Click(self, event):
         self.statusMessage.set("Exiting!")
@@ -1265,7 +1297,7 @@ class Application(Frame):
 
     def Entry_Power_Check(self):
         try:
-           float(self.Entry_Power.get())
+            float(self.Entry_Power.get())
         except:
             return 3  # Value not a number
         self.refreshTime()
@@ -2925,9 +2957,16 @@ class Application(Frame):
             if DEBUG:
                 debug_message(traceback.format_exc())
 
+    def VectorCutAndEngrave(self):
+        if self.VengData.ecoords == [] and self.VcutData.ecoords == []:
+            return 0
+        self.Vector_Eng()
+        self.Vector_Cut()
+
     def Vector_Cut(self, output_filename=None):
         self.Prepare_for_laser_run("Vector Cut: Processing Vector Data.")
         if self.VcutData.ecoords != []:
+            self.SendPowerSettingsToController(self.Vcut_pow.get())
             self.send_data("Vector_Cut", output_filename)
         else:
             self.statusbar.configure(bg='yellow')
@@ -2937,6 +2976,7 @@ class Application(Frame):
     def Vector_Eng(self, output_filename=None):
         self.Prepare_for_laser_run("Vector Engrave: Processing Vector Data.")
         if self.VengData.ecoords != []:
+            self.SendPowerSettingsToController(self.Veng_pow.get())
             self.send_data("Vector_Eng", output_filename)
         else:
             self.statusbar.configure(bg='yellow')
@@ -2959,6 +2999,7 @@ class Application(Frame):
         try:
             self.make_raster_coords()
             if self.RengData.ecoords != []:
+                self.SendPowerSettingsToController(self.Reng_pow.get())
                 self.send_data("Raster_Eng", output_filename)
             else:
                 self.statusbar.configure(bg='yellow')
@@ -3642,7 +3683,9 @@ class Application(Frame):
             self.k40.timeout = int(float(self.t_timeout.get()))
             self.k40.n_timeouts = int(float(self.n_timeouts.get()))
             time_start = time()
-            self.k40.send_data(data, self.update_gui, self.stop, num_passes, pre_process_CRC, wait_for_laser=True)
+
+            self.k40.send_data(data, self.update_gui, self.stop, num_passes, pre_process_CRC, wait_for_laser=True) #@todo add callback to cut after 
+
             self.run_time = time() - time_start
             if DEBUG:
                 print(("Elapsed Time: %.6f" % (time() - time_start)))
@@ -3743,12 +3786,19 @@ class Application(Frame):
         self.move_head_window_temporary([0.0, 0.0])
         self.k40 = K40_CLASS()
         try:
+            if(self.controller.isOpen() == True):
+                self.controller.close()
+            self.controller.open()
             self.k40.initialize_device()
             self.k40.say_hello()
             if self.init_home.get():
                 self.Home()
             else:
                 self.Unlock()
+
+        except serial.SerialException as e:
+                self.statusMessage.set("Cannot comunicate with laser controller.")
+                self.statusbar.configure(bg='red')
 
         except Exception as e:
             error_text = "%s" % (e)
@@ -3758,7 +3808,6 @@ class Application(Frame):
             self.statusbar.configure(bg='red')
             self.k40 = None
             debug_message(traceback.format_exc())
-
         except:
             self.statusMessage.set("Unknown USB Error")
             self.statusbar.configure(bg='red')
@@ -4073,7 +4122,10 @@ class Application(Frame):
                     self.Label_Reng_feed_u.place(x=x_units_L, y=Yloc, width=w_units, height=23)
                     Y_Reng = Yloc
 
-                    Yloc = Yloc-15
+                    Yloc = Yloc - 30
+                    self.Button_EngraveAndCut.place(x=10, y=Yloc, width=200, height=23)
+                    
+                    Yloc = Yloc - 15
                     self.separator5.place(x=x_label_L, y=Yloc, width=w_label + 75 + 40, height=2)
 
                     Yloc = Yloc - 40
@@ -4089,6 +4141,13 @@ class Application(Frame):
                     Yloc = Yloc - 30
                     self.Label_Powrs.place(x=40, y=Yloc, width=150, height=23)
 
+                    Yloc = Yloc - 15
+                    self.separator6.place(x=x_label_L, y=Yloc, width=w_label + 75 + 40, height=2)
+
+                    Yloc = Yloc - 30
+                    self.Label_SetPower.place(x=0, y=Yloc, width=100, height=23)
+                    self.Entry_SetPower.place(x=100, y=Yloc, width=70, height=23)
+                    self.Button_SetPower.place(x=180, y=Yloc, width=23, height=23)
 
                     if self.comb_vector.get() or self.comb_engrave.get():
                         if self.comb_engrave.get():
@@ -5188,8 +5247,15 @@ class Application(Frame):
 
         w_label = 180
 
-        self.Add_new_prst = Button(self.preset_window, text="Add new from current settings")
-        self.Add_new_prst.place(x=140, y=20, width=250, height=30, anchor="center")
+        self.Entry_PresetName = Entry(self.preset_window, justify='left')
+        self.Entry_PresetName.place(x=10, y=20, width=150, height=30, anchor="w")
+        self.Entry_PresetName.insert(0, 'Name of Preset')
+
+        self.Add_new_prst = Button(self.preset_window, text="Add new from current settings", command=self.savePreset)
+        self.Add_new_prst.place(x=170, y=20, width=200, height=30, anchor="w")
+
+        self.Remove_selected_Preset = Button(self.preset_window, text="Remove selected", command=self.removePreset)
+        self.Remove_selected_Preset.place(x=380, y=20, width=130, height=30, anchor="w")
 
         self.style = ttk.Style()
         self.style.configure("mystyle.Treeview", highlightthickness=0, bd=0,
@@ -5225,10 +5291,103 @@ class Application(Frame):
             self.Vcut_pow.set(itm['Cut']['power'])
             self.preset_window.destroy()
 
+    def removePreset(self):
+        curItem = self.tree.focus()
+        name = self.tree.item(curItem)['text']
+        if len(name):
+            msgBox = tkMessageBox.askyesno(title="Are you sure?", message="You are about to delete preset:\n"+name+"\nThis option can't be undone\n\n DELETE PRESET?")
+            if msgBox == True :
+                print('done')
+                del self.presetsData[name]
+                self.saveJsonToFile()
+                tkMessageBox.showinfo(title="Success", message="Preset was deleted sucessfully")
+                self.preset_window.destroy()
+    
+    def savePreset(self):
+        name = self.Entry_PresetName.get()
+        reng = self.Reng_feed.get()
+        veng = self.Veng_feed.get()
+        cut = self.Vcut_feed.get()
 
+        rpow = self.Reng_pow.get()
+        vpow = self.Veng_pow.get()
+        cpow = self.Vcut_pow.get()
 
+        if name in self.presetsData.keys():
+            tkMessageBox.showerror(title="Error!", message="There is already a preset with that name!")
+            return 0
 
-    ################################################################################
+        msgBox = tkMessageBox.askyesno(title="Are you sure?", message="You're about to save new preset called:\n"+name+"\nAre you sure?")
+        if msgBox == True:
+            self.presetsData[name] = {
+                "Raster": {
+                    "speed":reng,
+                    "power":rpow
+                },
+                "Engrave": {
+                    "speed":veng,
+                    "power":vpow
+                },
+                "Cut": {
+                    "speed":cut,
+                    "power":cpow
+                },
+            }
+            self.saveJsonToFile()
+            tkMessageBox.showinfo(title="Success", message="Preset was added sucessfully")
+            self.preset_window.destroy()
+
+    def saveJsonToFile(self):
+        jsonString = json.dumps(self.presetsData)
+        jsonFile = open("database/presets.json", "w")
+        jsonFile.write(jsonString)
+        jsonFile.close()
+
+    def SendPowerSettingsToController(self, power):
+        if(power > 0.1 or power <= 99.9):
+            self.controller.write(b"L1 P"+format(float(power), '.1f')+"\n")
+
+    def StringToBytes(val):
+        retVal = []
+        for c in val:
+                retVal.append(ord(c))
+        return retVal
+
+    def storePreset(self):
+        name = self.Entry_Prst_Name.get()
+
+        if (name in self.presetsData):
+            tkMessageBox.showerror(title="Error", message="That preset name already exist")
+            return 0
+        if ( not name):
+            tkMessageBox.showerror(title="Error", message="You must provide valid name")
+            return 0
+        unit = {}
+        unit[name] = {
+            "Raster":{
+                "speed": int(self.Reng_feed.get()),
+                "power": int(self.Reng_pow.get())
+            },
+            "Engrave": {
+                "speed": int(self.Veng_feed.get()),
+                "power": int(self.Veng_pow.get())
+            },
+            "Cut": {
+                "speed": int(self.Vcut_feed.get()),
+                "power": int(self.Vcut_pow.get())
+            }
+        }
+        self.presetsData.update(unit)
+        self.write_json(self.presetsData)
+        self.loadPresets()
+        self.preset_window.destroy()
+        self.Prst_show()
+
+    def write_json(self, data, filename='data.json'):
+        with open(self.filename, 'w') as f:
+            json.dump(data, f, indent=4)
+
+            ################################################################################
     #                         Rotary Settings Window                               #
     ################################################################################
     def ROTARY_Settings_Window(self):
